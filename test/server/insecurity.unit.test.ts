@@ -5,6 +5,7 @@
 
 // @ts-expect-error FIXME no typescript definitions for z85 :(
 import z85 from 'z85'
+import crypto from 'node:crypto'
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import * as security from '../../lib/insecurity'
@@ -207,6 +208,44 @@ void describe('insecurity', () => {
   void describe('deluxeToken', () => {
     void it('returns SHA-256 HMAC with private key as salt for email and deluxe role', () => {
       assert.equal(security.deluxeToken('test@juice-sh.op'), '91e2b6493fda679d95ae05ac0d1cdce82c2ad4f7b518202a3ed54732531bc7e1')
+    })
+  })
+
+  void describe('verify', () => {
+    const base64url = (input: object) => Buffer.from(JSON.stringify(input)).toString('base64url')
+    const payload = base64url({ data: { email: 'admin@juice-sh.op', role: 'admin' } })
+    const unsignedToken = `${base64url({ alg: 'none', typ: 'JWT' })}.${payload}.`
+    const hs256Input = `${base64url({ alg: 'HS256', typ: 'JWT' })}.${payload}`
+    const hs256Token = `${hs256Input}.${crypto.createHmac('sha256', security.publicKey).update(hs256Input).digest('base64url')}`
+
+    void it('accepts tokens signed with the private RSA key', () => {
+      assert.equal(security.verify(security.authorize({ data: { role: 'customer' } })), true)
+    })
+
+    void it('rejects unsigned tokens with "none" algorithm', () => {
+      assert.equal(security.verify(unsignedToken), false)
+    })
+
+    void it('rejects tokens HMAC-signed with the public RSA key', () => {
+      assert.equal(security.verify(hs256Token), false)
+    })
+
+    void it('rejects malformed tokens', () => {
+      assert.equal(security.verify('not-a-token'), false)
+    })
+
+    void it('isAuthorized rejects unsigned and HMAC-signed tokens with 401', async () => {
+      for (const token of [unsignedToken, hs256Token]) {
+        const req = { headers: { authorization: `Bearer ${token}` } } as any
+        const err: any = await new Promise(resolve => { void security.isAuthorized()(req, {} as any, resolve) })
+        assert.equal(err?.status, 401)
+      }
+    })
+
+    void it('isAuthorized accepts tokens signed with the private RSA key', async () => {
+      const req = { headers: { authorization: `Bearer ${security.authorize({ data: { role: 'customer' } })}` } } as any
+      const err = await new Promise(resolve => { void security.isAuthorized()(req, {} as any, resolve) })
+      assert.equal(err, undefined)
     })
   })
 

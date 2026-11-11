@@ -49,8 +49,7 @@ function signCeremonyToken (payload: Record<string, unknown>) {
 function verifyCeremonyToken (token: unknown, type: string): Record<string, any> | undefined {
   if (typeof token !== 'string' || jws.decode(token)?.header?.alg !== 'HS256') return undefined
   let payload: Record<string, any> | undefined
-  // jsonwebtoken@0.4.0 invokes the callback synchronously
-  jwt.verify(token, ceremonySecret, (err: unknown, decoded: any) => { if (!err) payload = decoded })
+  jwt.verify(token, ceremonySecret, { algorithms: ['HS256'] }, (err: unknown, decoded: any) => { if (!err) payload = decoded as Record<string, any> })
   return payload?.type === type ? payload : undefined
 }
 
