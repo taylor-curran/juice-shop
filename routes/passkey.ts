@@ -139,14 +139,11 @@ export async function registerVerify (req: Request, res: Response) {
 
   const existing = await PasskeyModel.findOne({ where: { credentialID } }) // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
   if (existing) { // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
-    existing.publicKey = publicKey // vuln-code-snippet vuln-line passkeyCredentialOverwriteChallenge
-    existing.counter = credential.counter // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
-    existing.transports = transports // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
-    existing.aaguid = aaguid // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
-    await existing.save() // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
-  } else {
-    await PasskeyModel.create({ UserId: user.id, credentialID, publicKey, counter: credential.counter, transports, aaguid })
-  }
+    res.status(409).json({ error: 'credentialID already registered' }) // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
+    return // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
+  } // vuln-code-snippet neutral-line passkeyCredentialOverwriteChallenge
+
+  await PasskeyModel.create({ UserId: user.id, credentialID, publicKey, counter: credential.counter, transports, aaguid })
 
   res.json({ verified: true })
 }

@@ -907,24 +907,15 @@
 		]
 	},
 	"passkeyCredentialOverwriteChallenge_1.ts": {
-		"added": [
-			45,
-			46
-		],
+		"added": [],
 		"removed": []
 	},
 	"passkeyCredentialOverwriteChallenge_2.ts": {
-		"added": [
-			45,
-			46
-		],
+		"added": [],
 		"removed": []
 	},
 	"passkeyCredentialOverwriteChallenge_3_correct.ts": {
-		"added": [
-			45,
-			46
-		],
+		"added": [],
 		"removed": []
 	},
 	"passkeySignatureChallenge_1.ts": {

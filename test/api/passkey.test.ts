@@ -332,28 +332,31 @@ void describe('/rest/passkey/register-options', () => {
 })
 
 void describe('/rest/passkey/register-verify', () => {
-  void it('POST overwrites the victim credential and signing in with the attacker key solves passkeyCredentialOverwriteChallenge', async (t) => {
+  void it('POST rejects a credential ID already registered to another user without touching the victim credential', async () => {
     challenges.passkeyCredentialOverwriteChallenge.solved = false
-    challenges.passkeySignatureChallenge.solved = false
-    t.after(async () => { await PasskeyModel.update({ publicKey: victim.publicKeyCose }, { where: { credentialID: victim.credentialID } }) })
+    const original = await PasskeyModel.findOne({ where: { credentialID: victim.credentialID } })
     const { token } = await login(app, JIM)
 
-    const { res, publicKey, privateKeyPem } = await registerPasskey(token, victim.credentialID)
+    const { res } = await registerPasskey(token, victim.credentialID)
 
-    assert.equal(res.status, 200)
-    assert.equal(res.body.verified, true)
-    const row = await PasskeyModel.findOne({ where: { credentialID: victim.credentialID } })
-    assert.equal(row?.publicKey, publicKey)
+    assert.equal(res.status, 409)
+    assert.equal(res.body.error, 'credentialID already registered')
+    const rows = await PasskeyModel.findAll({ where: { credentialID: victim.credentialID } })
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].publicKey, victim.publicKeyCose)
+    assert.equal(rows[0].UserId, original?.UserId)
     assert.equal(challenges.passkeyCredentialOverwriteChallenge.solved, false)
+  })
 
-    // The stored public key now belongs to the attacker, so a genuinely signed login succeeds.
-    const { challenge, authToken } = await loginOptions()
-    const loginRes = await loginVerify({ assertion: sign({ ...victim, privateKeyPem }, challenge), authToken })
+  void it('POST rejects re-registering a credential ID the user already owns', async () => {
+    const { token } = await login(app, JIM)
+    const { credentialID, publicKey } = await registerPasskey(token)
 
-    assert.equal(loginRes.status, 200)
-    assert.equal(loginRes.body.authentication.umail, VICTIM.email)
-    assert.equal(challenges.passkeyCredentialOverwriteChallenge.solved, true)
-    assert.equal(challenges.passkeySignatureChallenge.solved, false)
+    const { res } = await registerPasskey(token, credentialID)
+
+    assert.equal(res.status, 409)
+    const row = await PasskeyModel.findOne({ where: { credentialID } })
+    assert.equal(row?.publicKey, publicKey)
   })
 
   void it('POST registers a new passkey without the user-verification flag', async () => {
