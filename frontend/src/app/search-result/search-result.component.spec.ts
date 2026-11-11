@@ -320,6 +320,57 @@ describe('SearchResultComponent', () => {
         })
     })
 
+    describe('product sorting', () => {
+        beforeEach(() => {
+            productService.search.mockReturnValue(of([
+                { id: 1, name: 'Banana Juice', price: 2, deluxePrice: 0.1, description: 'd', image: 'i' },
+                { id: 2, name: 'Apple Juice', price: 3, deluxePrice: 3, description: 'd', image: 'i' },
+                { id: 3, name: 'Carrot Juice', price: 1, deluxePrice: 0.5, description: 'd', image: 'i' }
+            ]))
+            component.ngAfterViewInit()
+            fixture.detectChanges()
+        })
+
+        const names = () => component.dataSource.data.map(p => p.name)
+
+        it('should sort products by name ascending and descending', () => {
+            component.sortProducts('nameAsc')
+            expect(names()).toEqual(['Apple Juice', 'Banana Juice', 'Carrot Juice'])
+            component.sortProducts('nameDesc')
+            expect(names()).toEqual(['Carrot Juice', 'Banana Juice', 'Apple Juice'])
+        })
+
+        it('should sort products by price ascending and descending', () => {
+            component.sortProducts('priceAsc')
+            expect(names()).toEqual(['Carrot Juice', 'Banana Juice', 'Apple Juice'])
+            component.sortProducts('priceDesc')
+            expect(names()).toEqual(['Apple Juice', 'Banana Juice', 'Carrot Juice'])
+        })
+
+        it('should sort by deluxe price for deluxe members', () => {
+            deluxeGuard.isDeluxe.mockReturnValue(true)
+            component.sortProducts('priceAsc')
+            expect(names()).toEqual(['Banana Juice', 'Carrot Juice', 'Apple Juice'])
+        })
+
+        it('should restore the original order when switching back to featured', () => {
+            component.sortProducts('nameDesc')
+            component.sortProducts('default')
+            expect(names()).toEqual(['Banana Juice', 'Apple Juice', 'Carrot Juice'])
+        })
+
+        it('should jump back to the first page after sorting', () => {
+            const firstPageSpy = vi.spyOn(component.paginator, 'firstPage')
+            component.sortProducts('priceAsc')
+            expect(firstPageSpy).toHaveBeenCalled()
+            expect(component.sortOption).toBe('priceAsc')
+        })
+
+        it('should render a sort select in the heading', () => {
+            expect((fixture.nativeElement as HTMLElement).querySelector('.heading #sortSelect')).toBeTruthy()
+        })
+    })
+
     describe('responsive page size handling', () => {
         it('should observe the products grid via ResizeObserver and recompute page size on resize', () => {
             const observeSpy = vi.fn()

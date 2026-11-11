@@ -13,11 +13,19 @@
 }
 
 .heading {
+  align-items: center;
   background: var(--mat-sys-surface-container);
-  justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-m;
+  justify-content: space-between;
   padding: $space-s $space-ml;
   margin-bottom: $space-m;
+}
 
+.sort-select {
+  font: var(--mat-sys-body-large);
+  width: 220px;
 }
 
 .product {
