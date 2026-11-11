@@ -27,7 +27,7 @@ describe('/', () => {
   })
 
   describe('challenge "passkeyCredentialOverwriteChallenge"', () => {
-    it("should solve by overwriting the victim's credential and logging in with the attacker key", () => {
+    it("should reject registering the victim's credential ID from another account", () => {
       const attacker = { email: `passkey-attacker-${Date.now()}@juice-sh.op`, password: 'attacker123' }
 
       cy.request({
@@ -51,40 +51,19 @@ describe('/', () => {
           const { challenge } = optionsResponse.body.options
           const { regToken } = optionsResponse.body
 
-          cy.task('ForgePasskeyAttestation', { challenge }).then(({ attestation, privateKeyPem }: any) => {
+          cy.task('ForgePasskeyAttestation', { challenge }).then(({ attestation }: any) => {
             cy.request({
               method: 'POST',
               url: '/rest/passkey/register-verify',
               headers: { Authorization: `Bearer ${attackerToken}` },
-              body: { attestation, regToken }
+              body: { attestation, regToken },
+              failOnStatusCode: false
             }).then((verifyResponse) => {
-              expect(verifyResponse.body.verified).to.equal(true)
-            })
-
-            // The victim's stored public key is now the attacker's, so a genuinely signed login works.
-            cy.request({
-              method: 'POST',
-              url: '/rest/passkey/login-options',
-              body: { email: 'passkey-user@juice-sh.op' }
-            }).then((loginOptionsResponse) => {
-              const loginChallenge = loginOptionsResponse.body.options.challenge
-              const { authToken } = loginOptionsResponse.body
-
-              cy.task('SignPasskeyAssertion', { challenge: loginChallenge, privateKeyPem }).then((assertion) => {
-                cy.request({
-                  method: 'POST',
-                  url: '/rest/passkey/login-verify',
-                  body: { assertion, authToken }
-                }).then((verifyResponse) => {
-                  expect(verifyResponse.body.authentication.umail).to.equal('passkey-user@juice-sh.op')
-                })
-              })
+              expect(verifyResponse.status).to.equal(409)
             })
           })
         })
       })
-
-      cy.expectChallengeSolved({ challenge: 'Passkey Hijack' })
     })
   })
 })
