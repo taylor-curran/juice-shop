@@ -12,6 +12,7 @@ import { login } from './helpers/auth'
 
 let app: Express
 let authHeader: { Authorization: string, 'content-type': string }
+let otherUserAuthHeader: { Authorization: string, 'content-type': string }
 let addressId: string
 
 before(
@@ -25,6 +26,15 @@ before(
     })
     authHeader = {
       Authorization: 'Bearer ' + token,
+      'content-type': 'application/json'
+    }
+
+    const { token: otherUserToken } = await login(app, {
+      email: 'bender@juice-sh.op',
+      password: 'OhG0dPlease1nsertLiquor!'
+    })
+    otherUserAuthHeader = {
+      Authorization: 'Bearer ' + otherUserToken,
       'content-type': 'application/json'
     }
   },
@@ -167,6 +177,43 @@ void describe('/api/Addresss/:id', () => {
       .put('/api/Addresss/' + addressId)
       .set(authHeader)
       .send({ zipCode: 'NX 10111111' })
+    assert.equal(res.status, 400)
+  })
+
+  void it('GET address of another user is forbidden', async () => {
+    const res = await request(app)
+      .get('/api/Addresss/' + addressId)
+      .set(otherUserAuthHeader)
+    assert.equal(res.status, 400)
+    assert.equal(res.body.data, 'Malicious activity detected.')
+  })
+
+  void it('PUT update address of another user is forbidden', async () => {
+    const res = await request(app)
+      .put('/api/Addresss/' + addressId)
+      .set(otherUserAuthHeader)
+      .send({ fullName: 'Bender' })
+    assert.equal(res.status, 400)
+    assert.equal(res.body.data, 'Malicious activity detected.')
+
+    const ownRes = await request(app)
+      .get('/api/Addresss/' + addressId)
+      .set(authHeader)
+    assert.equal(ownRes.body.data.fullName, 'Jimy')
+  })
+
+  void it('PATCH update address of another user is forbidden', async () => {
+    const res = await request(app)
+      .patch('/api/Addresss/' + addressId)
+      .set(otherUserAuthHeader)
+      .send({ fullName: 'Bender' })
+    assert.equal(res.status, 400)
+  })
+
+  void it('DELETE address of another user is forbidden', async () => {
+    const res = await request(app)
+      .delete('/api/Addresss/' + addressId)
+      .set(otherUserAuthHeader)
     assert.equal(res.status, 400)
   })
 

@@ -49,6 +49,15 @@ void describe('/api/BasketItems', () => {
     assert.equal(res.status, 200)
   })
 
+  void it('GET all basket items only returns items of own basket', async () => {
+    const res = await request(app).get('/api/BasketItems').set(authHeader)
+    assert.equal(res.status, 200)
+    assert.ok(res.body.data.length > 0)
+    for (const item of res.body.data) {
+      assert.equal(item.BasketId, 2)
+    }
+  })
+
   void it('POST new basket item', async () => {
     const res = await request(app)
       .post('/api/BasketItems')
@@ -167,8 +176,37 @@ void describe('/api/BasketItems/:id', () => {
       .put('/api/BasketItems/' + createRes.body.data.id)
       .set(authHeader)
       .send({ BasketId: 3 })
-    assert.equal(res.status, 200)
-    assert.equal(res.body.data.BasketId, 3)
+    assert.equal(res.status, 403)
+  })
+
+  void it('GET basket item of another user is forbidden', async () => {
+    const res = await request(app)
+      .get('/api/BasketItems/1')
+      .set(authHeader)
+    assert.equal(res.status, 403)
+  })
+
+  void it('PUT update basket item of another user is forbidden', async () => {
+    const res = await request(app)
+      .put('/api/BasketItems/1')
+      .set(authHeader)
+      .send({ quantity: 1 })
+    assert.equal(res.status, 403)
+  })
+
+  void it('PATCH update basket item of another user is forbidden', async () => {
+    const res = await request(app)
+      .patch('/api/BasketItems/1')
+      .set(authHeader)
+      .send({ quantity: 1 })
+    assert.equal(res.status, 403)
+  })
+
+  void it('DELETE basket item of another user is forbidden', async () => {
+    const res = await request(app)
+      .delete('/api/BasketItems/1')
+      .set(authHeader)
+    assert.equal(res.status, 403)
   })
 
   void it('PUT update product ID of basket item is forbidden', async () => {
