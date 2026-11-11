@@ -173,7 +173,6 @@ export async function loginOptions (req: Request, res: Response) {
   res.json({ options, authToken })
 }
 
-// vuln-code-snippet start passkeySignatureChallenge
 /**
  * Verify a passkey assertion and sign the user in.
  */
@@ -207,21 +206,22 @@ export async function loginVerify (req: Request, res: Response) {
     }
   })
 
+  if (!verification.verified) {
+    res.status(401).send()
+    return
+  }
+
   const user = await UserModel.findByPk(passkey.UserId)
   if (!user) {
     res.status(401).send(res.__('No account found for this passkey.'))
     return
   }
 
-  challengeUtils.solveIf(challenges.passkeySignatureChallenge, () => { return user.id === users.passkeyUser.id && !verification.verified }) // vuln-code-snippet hide-line
-  await solvePasskeyHijack(user, passkey, verification.verified) // vuln-code-snippet hide-line
-  if (verification.verified) { // vuln-code-snippet neutral-line passkeySignatureChallenge
-    passkey.counter = verification.authenticationInfo.newCounter // vuln-code-snippet neutral-line passkeySignatureChallenge
-    await passkey.save() // vuln-code-snippet neutral-line passkeySignatureChallenge
-  } // vuln-code-snippet neutral-line passkeySignatureChallenge
-  await issuePasskeySession(user, res) // vuln-code-snippet vuln-line passkeySignatureChallenge
+  await solvePasskeyHijack(user, passkey, verification.verified)
+  passkey.counter = verification.authenticationInfo.newCounter
+  await passkey.save()
+  await issuePasskeySession(user, res)
 }
-// vuln-code-snippet end passkeySignatureChallenge
 
 let seededPasskeys: Promise<StaticUserPasskey[]> | undefined
 
