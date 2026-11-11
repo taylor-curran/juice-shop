@@ -14,6 +14,14 @@
       <div>{{ "TITLE_ALL_PRODUCTS" | translate }}</div>
     }
     <div id="search-result-heading"></div>
+    <mat-form-field class="sort-select" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ "LABEL_SORT_BY" | translate }}</mat-label>
+      <mat-select id="sortSelect" [value]="sortOption" (selectionChange)="sortProducts($event.value)">
+        @for (option of sortOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label | translate }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
   </div>
 
   @if (!emptyState) {

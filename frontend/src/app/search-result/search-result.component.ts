@@ -23,15 +23,19 @@ import { MatButtonModule } from '@angular/material/button'
 import { MatCardModule, MatCardTitle, MatCardContent } from '@angular/material/card'
 import { AsyncPipe } from '@angular/common'
 import { ProductComponent } from '../product/product.component'
+import { MatFormFieldModule } from '@angular/material/form-field'
+import { MatSelectModule } from '@angular/material/select'
 
 library.add(faEye, faCartPlus)
+
+export type ProductSortOption = 'default' | 'nameAsc' | 'nameDesc' | 'priceAsc' | 'priceDesc'
 
 @Component({
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-search-result',
   templateUrl: './search-result.component.html',
   styleUrls: ['./search-result.component.scss'],
-  imports: [MatCardModule, TranslateModule, MatButtonModule, MatCardTitle, MatCardContent, MatPaginator, AsyncPipe, ProductComponent]
+  imports: [MatCardModule, TranslateModule, MatButtonModule, MatCardTitle, MatCardContent, MatPaginator, AsyncPipe, ProductComponent, MatFormFieldModule, MatSelectModule]
 })
 export class SearchResultComponent implements OnDestroy, AfterViewInit {
   private readonly deluxeGuard = inject(DeluxeGuard)
@@ -57,6 +61,14 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
   private gridDataSourceSubscription?: Subscription
   private resizeObserver?: ResizeObserver
   public emptyState = false
+  public sortOption: ProductSortOption = 'default'
+  public readonly sortOptions: { value: ProductSortOption, label: string }[] = [
+    { value: 'default', label: 'SORT_DEFAULT' },
+    { value: 'nameAsc', label: 'SORT_NAME_ASC' },
+    { value: 'nameDesc', label: 'SORT_NAME_DESC' },
+    { value: 'priceAsc', label: 'SORT_PRICE_ASC' },
+    { value: 'priceDesc', label: 'SORT_PRICE_DESC' }
+  ]
 
   // vuln-code-snippet start restfulXssChallenge
   ngAfterViewInit () {
@@ -161,6 +173,22 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
     }
   }
   // vuln-code-snippet end localXssChallenge xssBonusChallenge
+
+  sortProducts (option: ProductSortOption) {
+    this.sortOption = option
+    if (!this.dataSource) return
+    const originalPosition = (entry: ProductTableEntry) => this.tableData.findIndex((product) => product.id === entry.id)
+    const displayedPrice = (entry: ProductTableEntry) => this.isDeluxe() ? entry.deluxePrice : entry.price
+    const comparators: Record<ProductSortOption, (a: ProductTableEntry, b: ProductTableEntry) => number> = {
+      default: (a, b) => originalPosition(a) - originalPosition(b),
+      nameAsc: (a, b) => a.name.localeCompare(b.name),
+      nameDesc: (a, b) => b.name.localeCompare(a.name),
+      priceAsc: (a, b) => displayedPrice(a) - displayedPrice(b),
+      priceDesc: (a, b) => displayedPrice(b) - displayedPrice(a)
+    }
+    this.dataSource.data = [...this.dataSource.data].sort(comparators[option])
+    this.paginator.firstPage()
+  }
 
   private setupResponsivePageSize () {
     const grid = this.elRef.nativeElement.querySelector('.products-grid')
