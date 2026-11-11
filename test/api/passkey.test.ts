@@ -159,7 +159,7 @@ void describe('/rest/passkey/login-verify', () => {
     assert.equal(res.body.authentication, undefined)
   })
 
-  void it('POST accepts an invalid signature and solves passkeySignatureChallenge', async () => {
+  void it('POST rejects an invalid signature without issuing a session', async () => {
     const invalidSignatures = {
       'signed with a different key': (challenge: string) => sign(victim, challenge, { tamper: true }),
       // The last byte belongs to the DER-encoded `s` integer, so the signature stays well-formed.
@@ -175,13 +175,13 @@ void describe('/rest/passkey/login-verify', () => {
 
       const res = await loginVerify({ assertion: forge(challenge), authToken })
 
-      assert.equal(res.status, 200, name)
-      assert.equal(res.body.authentication.umail, VICTIM.email, name)
-      assert.equal(challenges.passkeySignatureChallenge.solved, true, name)
+      assert.equal(res.status, 401, name)
+      assert.equal(res.body.authentication, undefined, name)
+      assert.equal(challenges.passkeySignatureChallenge.solved, false, name)
     }
   })
 
-  void it('POST accepts a forged signature for a non-victim passkey without solving passkeySignatureChallenge', async () => {
+  void it('POST rejects a forged signature for a non-victim passkey', async () => {
     challenges.passkeySignatureChallenge.solved = false
     const { token } = await login(app, JIM)
     const { credentialID } = await registerPasskey(token)
@@ -189,8 +189,8 @@ void describe('/rest/passkey/login-verify', () => {
 
     const res = await loginVerify({ assertion: sign({ ...victim, credentialID }, challenge, { tamper: true }), authToken })
 
-    assert.equal(res.status, 200)
-    assert.equal(res.body.authentication.umail, JIM.email)
+    assert.equal(res.status, 401)
+    assert.equal(res.body.authentication, undefined)
     assert.equal(challenges.passkeySignatureChallenge.solved, false)
   })
 

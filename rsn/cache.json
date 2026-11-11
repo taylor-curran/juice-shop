@@ -927,24 +927,6 @@
 		],
 		"removed": []
 	},
-	"passkeySignatureChallenge_1.ts": {
-		"added": [],
-		"removed": []
-	},
-	"passkeySignatureChallenge_2.ts": {
-		"added": [],
-		"removed": []
-	},
-	"passkeySignatureChallenge_3_correct.ts": {
-		"added": [],
-		"removed": [
-			34,
-			35,
-			36,
-			37,
-			38
-		]
-	},
 	"redirectChallenge_1.ts": {
 		"added": [],
 		"removed": []
