@@ -5,6 +5,9 @@
 
 // @ts-expect-error FIXME no typescript definitions for z85 :(
 import z85 from 'z85'
+import fs from 'node:fs'
+import crypto from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import * as security from '../../lib/insecurity'
@@ -206,7 +209,35 @@ void describe('insecurity', () => {
 
   void describe('deluxeToken', () => {
     void it('returns SHA-256 HMAC with private key as salt for email and deluxe role', () => {
-      assert.equal(security.deluxeToken('test@juice-sh.op'), '91e2b6493fda679d95ae05ac0d1cdce82c2ad4f7b518202a3ed54732531bc7e1')
+      assert.match(security.deluxeToken('test@juice-sh.op'), /^[0-9a-f]{64}$/)
+      assert.equal(security.deluxeToken('test@juice-sh.op'), security.deluxeToken('test@juice-sh.op'))
+      assert.notEqual(security.deluxeToken('test@juice-sh.op'), security.deluxeToken('other@juice-sh.op'))
+    })
+
+    void it('no longer matches the token derived from the formerly hardcoded private key', () => {
+      assert.notEqual(security.deluxeToken('test@juice-sh.op'), '91e2b6493fda679d95ae05ac0d1cdce82c2ad4f7b518202a3ed54732531bc7e1')
+    })
+  })
+
+  void describe('signing keys', () => {
+    void it('issues tokens that verify against the exported public key', () => {
+      assert.equal(security.verify(security.authorize({ data: { email: 'test@juice-sh.op' } })), true)
+    })
+
+    void it('does not use the formerly hardcoded key pair', () => {
+      assert.notEqual(security.publicKey.trim(), fs.readFileSync('encryptionkeys/jwt.pub', 'utf8').trim())
+    })
+
+    void it('loads the private key from JWT_PRIVATE_KEY', () => {
+      const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs1', format: 'pem' }
+      })
+      const output = execFileSync(process.execPath, ['--import', 'tsx', '--eval', "import('./lib/insecurity.ts').then(m => process.stdout.write(m.publicKey))"], {
+        env: { ...process.env, JWT_PRIVATE_KEY: privateKey.replace(/\n/g, '\\n') }
+      }).toString()
+      assert.equal(output, publicKey)
     })
   })
 
